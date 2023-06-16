@@ -6,6 +6,13 @@
 //
 
 import Foundation
+
+protocol DataRepositoryProtocol {
+    func fetchNotes() async throws -> [Note]
+    func saveNote(note: Note) async throws
+    func deleteNote(by id: UUID) async throws
+    func updateNote(_ note: Note) async throws
+}
 // MARK: - DataRepository
 /// DataRepository представляет конкретную реализацию DataRepositoryProtocol,
 /// которая предоставляет средства для работы с данными заметок
