@@ -27,7 +27,7 @@ public class NoteEntity: NSManagedObject {
     @NSManaged public var dueDate: Date?
     
     /// Дополнительные заметки
-    @NSManaged public var notes: String?
+    @NSManaged public var note: String?
     
     // MARK: - Initialization
     /// Инициализатор для создания сущности NoteEntity из заметки и контекста
@@ -39,6 +39,6 @@ public class NoteEntity: NSManagedObject {
         self.title = note.title
         self.isComplete = note.isComplete
         self.dueDate = note.dueDate
-        self.notes = note.notes
+        self.note = note.note
     }
 }

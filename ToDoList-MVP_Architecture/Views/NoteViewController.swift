@@ -5,126 +5,120 @@
 //  Created by Shamil Aglarov on 16.06.2023.
 //
 
-// MARK: - ViewController.swift
-// ToDoList-MVP_Architecture
-// Создан Shamil Aglarov 16.06.2023.
 import UIKit
 import CoreData
 
 // MARK: - NoteViewProtocol
-/// Протокол определяет обязательные методы для отображения заметок
+/// Протокол, определяющий обязательные методы для обновления и отображения заметок.
 protocol NoteViewProtocol {
-    func showLoading() /// Показывает индикатор загрузки
-    func hideLoading() /// Скрывает индикатор загрузки
-    func set(notes: [Note]) /// Заполняет представление заметками
-    func showError(title: String, message: String) /// Отображает сообщение об ошибке
-    func addNewNote() /// Добавляет новую заметку
+    var notes: [Note] { get set }
+    
+    /// Обновляет заметку в массиве по определенному индексу.
+    func updateNoteInArray(at indexPath: IndexPath, with newNote: Note)
+    
+    /// Перезагружает определенные строки в tableView.
+    func didReloadRows(at indexPath: IndexPath)
+    
+    /// Показывает индикатор загрузки.
+    func showLoading()
+    
+    /// Скрывает индикатор загрузки.
+    func hideLoading()
+    
+    /// Устанавливает массив заметок.
+    func set(notes: [Note])
+    
+    /// Показывает ошибку с определенным заголовком и сообщением.
+    func showError(title: String, message: String)
+    
+    /// Вставляет новую заметку в массив и перезагружает соответствующую строку в tableView.
+    func insertNoteInArrayAndReload(at indexPath: IndexPath, with note: Note)
 }
 
-// MARK: - NoteViewController
-/// Класс NoteViewController обеспечивает отображение списка заметок и взаимодействие с пользователем
 class NoteViewController: UIViewController, NoteViewProtocol {
     
-    // MARK: - Свойства
-    var notes = [Note]() /// Массив заметок
-    var presenter: NotePresenterProtocol! /// Презентер для обработки логики отображения заметок
+    var selectedIndexPath: IndexPath?
     
-    // MARK: - UI элементы
+    @MainActor var notes = [Note]()
+    var presenter: NotePresenterProtocol!
+    
+    /// Инициализирует tableView и регистрирует ячейку.
     var tableView: UITableView = {
         let table = UITableView()
-        table.translatesAutoresizingMaskIntoConstraints = false
         table.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
         return table
     }()
     
-    // MARK: - Методы жизненного цикла
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupConfigureConstraints()
         
-//        let testNote = Note(title: "Тестовая заметка", isComplete: true, dueDate: Date(), notes: "Эта заметка добавлена для тестирования работы программы и ее функций")
+        /// Устанавливает ограничения для tableView.
+        setupTableConstraints()
         
         tableView.dataSource = self
         tableView.delegate = self
         
+        /// Инициализирует persistentContainer, cache и dataRepository, а затем создает презентер.
         let persistentContainer = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
-        
-        let cache: CoreDataCacheProtocol = CoreDataHandler(persistentContainer)
-        
-        // Создаем экземпляр DataRepository и подключаем его к протоколу CoreData
+        let cache: CoreDataCacheProtocol = CoreDataManager(persistentContainer)
         let dataRepository = DataRepository(cache: cache)
-        
-        // Инициализируем презентер и подключаем к базе данных
         presenter = NotePresenter(view: self, repository: dataRepository)
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         
-        presenter.fetchNotes()
-        
-        // Добавляем новую заметку
-//        Task.init {
-//            await presenter.saveNote(note: testNote)
-//        }
+        /// Пытается получить заметки при появлении представления.
+        Task {
+            do {
+                try await presenter.fetchNotes()
+            } catch {
+                print("Не удалось получить заметки: \(error)")
+            }
+        }
     }
     
     // MARK: - Методы NoteViewProtocol
+
+    /// Показывает индикатор загрузки в правой части навигационной панели.
     func showLoading() {
-        let activityIndicatorView = UIActivityIndicatorView(style: .medium)
-        activityIndicatorView.startAnimating()
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: activityIndicatorView)
+        DispatchQueue.main.async {
+            let activityIndicatorView = UIActivityIndicatorView(style: .medium)
+            activityIndicatorView.startAnimating()
+            self.navigationItem.rightBarButtonItem = UIBarButtonItem(customView: activityIndicatorView)
+        }
     }
     
+    /// Скрывает индикатор загрузки и вместо него отображает кнопку добавления.
     func hideLoading() {
-        navigationItem.rightBarButtonItem = nil
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add,
+                                                            target: self,
+                                                            action: #selector(actionBarButtonAdd))
     }
     
+    /// Устанавливает новый массив заметок и перезагружает tableView.
     func set(notes: [Note]) {
         self.notes = notes
-        tableView.reloadData() /// Перезагружаем данные таблицы
+        tableView.reloadData()
     }
     
+    /// Отображает всплывающее окно с ошибкой.
     func showError(title: String, message: String) {
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let cancelAction = UIAlertAction(title: "Закрыть", style: .cancel)
+        alertController.addAction(cancelAction)
         present(alertController, animated: true, completion: nil)
     }
     
-    func addNewNote() {
-        tableView.reloadData() /// Перезагружаем данные таблицы
+    /// Обновляет определенную заметку в массиве.
+    func updateNoteInArray(at indexPath: IndexPath, with newNote: Note) {
+        self.notes[indexPath.row] = newNote
     }
     
-    // MARK: - Настройка интерфейса
-    func setupConfigureConstraints() {
-        navigationItem.title = "Напоминания"
-        self.view.backgroundColor = .systemBackground
-        view.addSubview(tableView)
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
-        ])
-    }
-}
-
-// MARK: - UITableViewDataSource & UITableViewDelegate
-/// Реализация методов UITableViewDataSource и UITableViewDelegate
-extension NoteViewController: UITableViewDataSource, UITableViewDelegate {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return notes.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "Cell")
-        let note = notes[indexPath.row]
-        cell.textLabel?.text = note.title
-        cell.detailTextLabel?.text = note.notes
-        return cell
-    }
-    
-    private func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) async {
-        if editingStyle == .delete {
-            let selectedNote = notes[indexPath.row]
-            await presenter.deleteNote(by: selectedNote.id)
-            tableView.reloadData()
+    /// Перезагружает определенные строки в tableView.
+    func didReloadRows(at indexPath: IndexPath) {
+        DispatchQueue.main.async {
+            self.tableView.reloadRows(at: [indexPath], with: .automatic)
         }
     }
 }
