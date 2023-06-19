@@ -25,7 +25,7 @@ struct Note: Codable, Identifiable, Equatable {
     var dueDate: Date
 
     /// Дополнительные заметки
-    var notes: String?
+    var note: String?
     
     // MARK: - Initialization
     /// Инициализатор для создания новой заметки
@@ -33,13 +33,13 @@ struct Note: Codable, Identifiable, Equatable {
          title: String,
          isComplete: Bool,
          dueDate: Date,
-         notes: String? = nil)
+         note: String? = nil)
     {
         self.id = id
         self.title = title
         self.isComplete = isComplete
         self.dueDate = dueDate
-        self.notes = notes
+        self.note = note
     }
     
     // MARK: - Equatable
@@ -58,6 +58,6 @@ extension Note {
         self.title = entity.title ?? ""
         self.isComplete = entity.isComplete
         self.dueDate = entity.dueDate ?? Date()
-        self.notes = entity.notes ?? ""
+        self.note = entity.note ?? ""
     }
 }
