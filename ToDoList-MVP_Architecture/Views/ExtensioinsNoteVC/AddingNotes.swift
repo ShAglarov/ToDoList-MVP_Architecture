@@ -13,7 +13,7 @@ extension NoteViewController {
     // MARK: - NoteViewProtocol Methods
     
     /// Метод для создания новой заметки при нажатии на кнопку "Создать"
-    func createButtonTapped() async throws {
+    func createButtonTapped() {
         let alertAddNoteController = UIAlertController(title: "Добавить новую заметку", message: "", preferredStyle: .alert)
         
         alertAddNoteController.addTextField { textField in
@@ -32,13 +32,7 @@ extension NoteViewController {
                let note = noteField?.text, !note.isEmpty {
                 let newNote = Note(id: UUID(), title: title, isComplete: false, dueDate: Date(), note: note)
                 
-                Task {
-                    do {
-                        try await self.presenter.addNewNote(newNote)
-                    } catch {
-                        print("Ошибка добавления новой заметки: \(error)")
-                    }
-                }
+                self.presenter.addNewNote(newNote)
             } else {
                 self.showError(title: "Ввведите все поля", message: "Для добавления заметки, необходимо заполнить все поля")
             }
@@ -62,12 +56,6 @@ extension NoteViewController {
     
     /// Функция, выполняемая при нажатии на кнопку добавления заметки
     @objc func actionBarButtonAdd() {
-        Task.init {
-            do {
-                try await createButtonTapped()
-            } catch {
-                print("ошибка \(error)")
-            }
-        }
+        createButtonTapped()
     }
 }

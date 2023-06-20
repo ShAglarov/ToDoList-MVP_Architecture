@@ -10,10 +10,10 @@ import Foundation
 // MARK: - DataRepositoryProtocol
 // Создаем протокол для нашего репозитория данных, чтобы упростить будущее тестирование и поддержку.
 protocol DataRepositoryProtocol {
-    func fetchNotes() async throws -> [Note]
-    func saveNote(note: Note) async throws
-    func deleteNote(by id: UUID) async throws
-    func updateNote(by id: UUID, newNote: Note) async throws
+    func fetchNotes(completion: @escaping (Result<[Note], Error>) -> Void)
+    func saveNote(note: Note, completion: @escaping (Error?) -> Void)
+    func deleteNote(by id: UUID, completion: @escaping (Error?) -> Void)
+    func updateNote(by id: UUID, newNote: Note, completion: @escaping (Result<NoteEntity, Error>) -> Void)
 }
 // MARK: - DataRepository
 // Наш репозиторий данных. Этот класс используется для взаимодействия с нашей базой данных (или любым другим источником данных).
@@ -32,22 +32,22 @@ final class DataRepository: DataRepositoryProtocol {
     
     // MARK: - DataRepositoryProtocol Methods
     /// Извлекаем заметки из нашего кэша.
-    func fetchNotes() async throws -> [Note] {
-        return try await cache.fetchNotes()
+    func fetchNotes(completion: @escaping (Result<[Note], Error>) -> Void) {
+        cache.fetchNotes(completion: completion)
     }
     
     /// Сохраняем заметку в нашем кэше.
-    func saveNote(note: Note) async throws {
-        try await cache.saveNote(note: note)
+    func saveNote(note: Note, completion: @escaping (Error?) -> Void) {
+        cache.saveNote(note: note, completion: completion)
     }
     
     /// Удаляем заметку из нашего кэша.
-    func deleteNote(by id: UUID) async throws {
-        try await cache.deleteNote(by: id)
+    func deleteNote(by id: UUID, completion: @escaping (Error?) -> Void) {
+        cache.deleteNote(by: id, completion: completion)
     }
     
     /// Обновляем заметку в нашем кэше.
-    func updateNote(by id: UUID, newNote: Note) async throws {
-        try await cache.updateNote(with: id, newNote: newNote)
+    func updateNote(by id: UUID, newNote: Note, completion: @escaping (Result<NoteEntity, Error>) -> Void) {
+        cache.updateNote(with: id, newNote: newNote, completion: completion)
     }
 }

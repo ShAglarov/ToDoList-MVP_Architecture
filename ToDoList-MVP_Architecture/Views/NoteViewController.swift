@@ -69,13 +69,8 @@ class NoteViewController: UIViewController, NoteViewProtocol {
         super.viewWillAppear(animated)
         
         /// Пытается получить заметки при появлении представления.
-        Task {
-            do {
-                try await presenter.fetchNotes()
-            } catch {
-                print("Не удалось получить заметки: \(error)")
-            }
-        }
+        presenter.fetchNotes()
+
     }
     
     // MARK: - Методы NoteViewProtocol

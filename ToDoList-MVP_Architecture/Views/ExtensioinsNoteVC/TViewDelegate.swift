@@ -17,17 +17,10 @@ extension NoteViewController: UITableViewDelegate {
         let deleteAction = UIContextualAction(style: .destructive, title: "Удалить") { [weak self] (_, _, completionHandler) in
             guard let self = self else { return }
             let selectedNote = self.notes[indexPath.row]
-            Task {
-                do {
-                    try await self.presenter.deleteNote(by: selectedNote.id)
-                    self.notes.remove(at: indexPath.row)
-                    self.tableView.deleteRows(at: [indexPath], with: .fade)
-                    completionHandler(true)
-                } catch {
-                    print("Не удалось удалить заметку: \(error)")
-                    completionHandler(false)
-                }
-            }
+            self.presenter.deleteNote(by: selectedNote.id)
+            self.notes.remove(at: indexPath.row)
+            self.tableView.deleteRows(at: [indexPath], with: .fade)
+            completionHandler(true)
         }
         
         // Действие редактирования
@@ -49,9 +42,9 @@ extension NoteViewController: UITableViewDelegate {
     /// Обрабатывает нажатие на ячейку
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-
+        
         tableView.beginUpdates()
-
+        
         if let selectedIndexPath = selectedIndexPath, selectedIndexPath == indexPath {
             // Если нажатая ячейка уже была выбрана, то скрываем детали
             self.selectedIndexPath = nil
@@ -62,7 +55,7 @@ extension NoteViewController: UITableViewDelegate {
             selectedIndexPath = indexPath
             tableView.reloadRows(at: [previouslySelectedIndexPath, selectedIndexPath].compactMap { $0 }, with: .automatic)
         }
-
+        
         tableView.endUpdates()
     }
     
@@ -86,13 +79,7 @@ extension NoteViewController: UITableViewDelegate {
             let newNotes = alertController.textFields?[1].text ?? ""
             let newNote = Note(id: note.id, title: newTitle, isComplete: note.isComplete, dueDate: note.dueDate, note: newNotes)
             
-            Task {
-                do {
-                    try await self.presenter.updateNote(withId: newNote.id, newNote: newNote)
-                } catch {
-                    print("Не удалось обновить заметку1: \(error)")
-                }
-            }
+            self.presenter.updateNote(withId: newNote.id, newNote: newNote)
         }
         
         // Действие отмены редактирования

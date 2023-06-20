@@ -9,7 +9,7 @@ import UIKit
 
 // MARK: - Реализация UITableViewDataSource
 extension NoteViewController: UITableViewDataSource {
-
+    
     /// Определяет количество строк в секции
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return notes.count
@@ -70,15 +70,8 @@ extension NoteViewController: UITableViewDataSource {
         var note = notes[indexPath.row]
         note.isComplete.toggle()
         
-        Task {
-            do {
-                try await self.presenter.updateNote(withId: note.id, newNote: note)
-                await MainActor.run {
-                    tableView.reloadRows(at: [IndexPath(row: indexPath.row, section: 0)], with: .automatic)
-                }
-            } catch {
-                print("Ошибка выборки")
-            }
-        }
+        self.presenter.updateNote(withId: note.id, newNote: note)
+        tableView.reloadRows(at: [IndexPath(row: indexPath.row, section: 0)], with: .automatic)
     }
 }
+
