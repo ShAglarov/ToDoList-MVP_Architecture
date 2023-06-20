@@ -63,15 +63,18 @@ extension NoteViewController: UITableViewDataSource {
     
     /// Действие при нажатии на кнопку ячейки
     @objc func buttonAction(sender: UIButton) {
-        let buttonRow = sender.tag
-        var note = notes[buttonRow]
+        // Найти ячейку, в которой находится кнопка
+        let buttonPosition = sender.convert(CGPoint.zero, to: self.tableView)
+        guard let indexPath = self.tableView.indexPathForRow(at: buttonPosition) else { return }
+        
+        var note = notes[indexPath.row]
         note.isComplete.toggle()
         
         Task {
             do {
                 try await self.presenter.updateNote(withId: note.id, newNote: note)
                 await MainActor.run {
-                    tableView.reloadRows(at: [IndexPath(row: buttonRow, section: 0)], with: .automatic)
+                    tableView.reloadRows(at: [IndexPath(row: indexPath.row, section: 0)], with: .automatic)
                 }
             } catch {
                 print("Ошибка выборки")
