@@ -8,7 +8,8 @@
 import Foundation
 import CoreData
 
-///Определяем протокол для операций кэширования CoreData
+// MARK: - CoreDataCacheProtocol
+/// Протокол, определяющий интерфейс операций кэширования CoreData
 protocol CoreDataCacheProtocol {
     func fetchNotes(completion: @escaping (Result<[Note], Error>) -> Void)
     func saveNote(note: Note, completion: @escaping (Error?) -> Void)
@@ -16,20 +17,20 @@ protocol CoreDataCacheProtocol {
     func updateNote(with id: UUID, newNote: Note, completion: @escaping (Result<NoteEntity, Error>) -> Void)
 }
 
+// MARK: - CoreDataManager
+/// Управление CoreData операциями, такими как сохранение, удаление, обновление и извлечение заметок.
 final class CoreDataManager: CoreDataCacheProtocol {
     
     // MARK: - Properties
-    /// NSPersistentContainer - это компонент CoreData, который инкапсулирует всю логику доступа к базе данных.
     private let persistentContainer: NSPersistentContainer
     
     // MARK: - Initialization
-    /// Инициализатор принимает NSPersistentContainer в качестве зависимости. Он используется для доступа к базе данных.
     init(_ persistentContainer: NSPersistentContainer) {
         self.persistentContainer = persistentContainer
     }
     
     // MARK: - Fetch Notes
-    /// Эта функция выполняет запрос на выборку в базе данных и возвращает массив заметок, используется модель Note, которая создается из сущностей NoteEntity.
+    /// Выполняет запрос на выборку в базе данных и возвращает массив заметок.
     func fetchNotes(completion: @escaping (Result<[Note], Error>) -> Void) {
         let fetchRequest = NoteEntity.fetchRequest() as? NSFetchRequest<NoteEntity>
         guard let unwrappedFetchRequest = fetchRequest else {
@@ -48,7 +49,9 @@ final class CoreDataManager: CoreDataCacheProtocol {
             }
         }
     }
-
+    
+    // MARK: - Save Note
+    /// Сохраняет заметку в базе данных.
     func saveNote(note: Note, completion: @escaping (Error?) -> Void) {
         let context = persistentContainer.viewContext
         context.perform {
@@ -67,7 +70,9 @@ final class CoreDataManager: CoreDataCacheProtocol {
             }
         }
     }
-
+    
+    // MARK: - Delete Note
+    /// Удаляет заметку из базы данных.
     func deleteNote(by id: UUID, completion: @escaping (Error?) -> Void) {
         let context = persistentContainer.viewContext
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "NoteEntity")
@@ -87,7 +92,7 @@ final class CoreDataManager: CoreDataCacheProtocol {
     }
     
     // MARK: - Update Note
-    /// обновляем заметки в базе данных CoreData
+    /// Обновляет заметку в базе данных.
     func updateNote(with id: UUID, newNote: Note, completion: @escaping (Result<NoteEntity, Error>) -> Void) {
         let context = persistentContainer.viewContext
         let fetchRequest = NoteEntity.fetchRequest() as NSFetchRequest<NSFetchRequestResult>
@@ -96,26 +101,20 @@ final class CoreDataManager: CoreDataCacheProtocol {
         context.perform {
             do {
                 let noteEntities = try context.fetch(fetchRequest) as! [NoteEntity]
-                print("Получено \(noteEntities.count) сущности")
-                
                 guard let entity = noteEntities.first else {
                     let error = NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Не удалось найти заметку с указанным ID."])
                     completion(.failure(error))
                     return
                 }
                 
-                print("Старый объект: \(entity)")
                 entity.title = newNote.title
                 entity.isComplete = newNote.isComplete
                 entity.dueDate = newNote.dueDate
                 entity.note = newNote.note
-                print("Обновленный объект: \(entity)")
                 
                 try context.save()
-                print("Объект сохранен")
                 completion(.success(entity))
             } catch let error {
-                print("Не удалось обновить заметку: \(error)")
                 completion(.failure(error))
             }
         }
