@@ -29,7 +29,6 @@ protocol NotePresenterProtocol {
 
 // MARK: - NotePresenter
 
-/// NotePresenter управляет отображением заметок и обрабатывает пользовательский ввод
 class NotePresenter: NotePresenterProtocol {
     
     private var view: NoteViewProtocol
@@ -37,6 +36,7 @@ class NotePresenter: NotePresenterProtocol {
     private var tasks: Set<Task<Void, Never>> = []
     private var expandedIndexPath: IndexPath?
     
+    /// Инициализирует презентер, связывает его с представлением и репозиторием.
     init(view: NoteViewProtocol,
          repository: DataRepositoryProtocol)
     {
@@ -46,7 +46,7 @@ class NotePresenter: NotePresenterProtocol {
     
     // MARK: - Fetch Notes
     
-    /// Извлекает заметки из базы данных и обновляет представление
+    /// Запрашивает заметки из репозитория и передает их представлению.
     func fetchNotes() {
         view.showLoading()
         repository.fetchNotes { result in
@@ -67,7 +67,7 @@ class NotePresenter: NotePresenterProtocol {
     
     // MARK: - Delete Note
     
-    /// Удаляет заметку по ID
+    /// Удаляет заметку с заданным идентификатором.
     func deleteNote(by id: UUID) {
         repository.deleteNote(by: id) { error in
             if let error = error {
@@ -80,11 +80,12 @@ class NotePresenter: NotePresenterProtocol {
     
     // MARK: - Update Note
     
-    /// Обновляет заметку с данным ID новыми данными
+    /// Обновляет заметку с заданным идентификатором новой заметкой.
     func updateNote(withId id: UUID, newNote: Note) {
-        repository.updateNote(by: id, newNote: newNote) { result in
-            switch result {
-            case .success(_):
+        repository.update(id: id, with: newNote) { error in
+            if let error = error {
+                self.view.showError(title: "Ошибка при обновлении ячейки", message: error.localizedDescription)
+            } else {
                 if let index = self.view.notes.enumerated().first(where: { $0.element.id == id })?.offset {
                     let indexPath = IndexPath(row: index, section: 0)
                     DispatchQueue.main.async {
@@ -92,26 +93,24 @@ class NotePresenter: NotePresenterProtocol {
                         self.view.didReloadRows(at: indexPath)
                     }
                 }
-            case .failure(let error):
-                self.view.showError(title: "Ошибка при обновлении ячейки", message: error.localizedDescription)
             }
         }
     }
     
-    // MARK: - Image for Note
+    // MARK: - Image Name
     
-    /// Возвращает имя изображения в зависимости от того, выполнена заметка или нет
+    /// Возвращает имя изображения в зависимости от статуса выполнения заметки.
     func getImageName(for isComplete: Bool) -> String {
         return isComplete ? "checkmark.circle.fill" : "circle"
     }
     
-    // MARK: - Add Note
+    // MARK: - Add New Note
     
-    /// Добавляет новую заметку
+    /// Добавляет новую заметку и обновляет представление.
     func addNewNote(_ note: Note) {
         let indexPath = IndexPath(row: 0, section: 0)
         
-        repository.saveNote(note: note) { error in
+        repository.save(note: note) { error in
             if let error = error {
                 self.view.showError(title: "Ошибка при добавлении ячейки", message: error.localizedDescription)
             } else {

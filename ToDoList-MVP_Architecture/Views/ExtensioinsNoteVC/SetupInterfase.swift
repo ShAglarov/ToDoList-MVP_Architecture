@@ -11,6 +11,7 @@ import SnapKit
 // MARK: - Настройка интерфейса
 extension NoteViewController {
     
+    /// Настраивает ограничения для tableView и задает базовые свойства view.
     func setupTableConstraints() {
         
         navigationItem.title = "Напоминания"
@@ -25,6 +26,7 @@ extension NoteViewController {
         }
     }
     
+    /// Настраивает ограничения для элементов ячейки и задает базовые свойства элементов.
     func setupCellConstraints(iconButton: UIButton, titleLabel: UILabel, detailLabel: UILabel, separatorLine: UIView, cell: UITableViewCell) {
         cell.contentView.addSubview(iconButton)
         cell.contentView.addSubview(titleLabel)
@@ -57,9 +59,11 @@ extension NoteViewController {
             make.height.equalTo(1) // высота линии равна 1
         }
         
+        // MARK: - Показ подробностей
+        /// Настраивает ограничения для detailLabel, который показывается при выборе ячейки.
         func showDetailView() {
             detailLabel.snp.makeConstraints { make in
-                make.top.equalTo(separatorLine.snp.top).offset(10)
+                make.top.equalTo(separatorLine.snp.bottom).offset(10)
                 make.leading.equalTo(titleLabel.snp.leading)
                 make.trailing.equalTo(titleLabel.snp.trailing)
                 make.bottom.equalTo(cell.contentView.snp.bottom).offset(-50)

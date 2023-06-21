@@ -30,12 +30,18 @@ extension NoteViewController {
             
             if let title = titleField?.text, !title.isEmpty,
                let note = noteField?.text, !note.isEmpty {
-                let newNote = Note(id: UUID(), title: title, isComplete: false, dueDate: Date(), note: note)
-                
+                let newNote = Note.newInstance(title: title, note: note)
                 self.presenter.addNewNote(newNote)
-            } else {
-                self.showError(title: "Ввведите все поля", message: "Для добавления заметки, необходимо заполнить все поля")
             }
+            
+//            if let title = titleField?.text, !title.isEmpty,
+//               let note = noteField?.text, !note.isEmpty {
+//                let newNote = Note(from: <#T##NoteEntity#>)
+//
+//                self.presenter.addNewNote(newNote)
+//            } else {
+//                self.showError(title: "Ввведите все поля", message: "Для добавления заметки, необходимо заполнить все поля")
+//            }
         }
         
         let cancelAction = UIAlertAction(title: "Закрыть", style: .cancel)

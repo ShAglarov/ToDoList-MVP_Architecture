@@ -58,10 +58,10 @@ class NoteViewController: UIViewController, NoteViewProtocol {
         tableView.dataSource = self
         tableView.delegate = self
         
-        /// Инициализирует persistentContainer, cache и dataRepository, а затем создает презентер.
+        /// Инициализирует persistentContainer, manager и dataRepository, а затем создает презентер.
         let persistentContainer = (UIApplication.shared.delegate as! AppDelegate).persistentContainer
-        let cache: CoreDataCacheProtocol = CoreDataManager(persistentContainer)
-        let dataRepository = DataRepository(cache: cache)
+        let manager: CoreDataManager<Note> = CoreDataManager(persistentContainer)
+        let dataRepository = DataRepository(manager: manager)
         presenter = NotePresenter(view: self, repository: dataRepository)
     }
     

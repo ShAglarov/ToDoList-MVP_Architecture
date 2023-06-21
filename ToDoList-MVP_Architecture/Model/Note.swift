@@ -6,58 +6,50 @@
 //
 
 import Foundation
+import CoreData
 
-// MARK: - Note
-/// Структура Note представляет модель заметки и реализует протоколы Codable, Identifiable и Equatable.
-struct Note: Codable, Identifiable, Equatable {
+struct Note: CoreDataManagerProtocol {
     
-    // MARK: - Properties
-    /// Уникальный идентификатор заметки
-    var id = UUID()
+    typealias Entity = NoteEntity
     
-    /// Заголовок заметки
-    var title: String
-    
-    /// Статус выполнения заметки
+    let id: UUID
+    let title: String
     var isComplete: Bool
+    let dueDate: Date
+    let note: String
     
-    /// Срок исполнения заметки
-    var dueDate: Date
-
-    /// Дополнительные заметки
-    var note: String?
+    // Initialize Note from NoteEntity
+    init(from entity: NoteEntity) {
+        id = entity.id!
+        title = entity.title!
+        isComplete = entity.isComplete
+        dueDate = entity.dueDate!
+        note = entity.note!
+    }
     
-    // MARK: - Initialization
-    /// Инициализатор для создания новой заметки
-    init(id: UUID = UUID(),
-         title: String,
-         isComplete: Bool,
-         dueDate: Date,
-         note: String? = nil)
-    {
+    // Direct initialization
+    init(id: UUID = UUID(), title: String, isComplete: Bool = false, dueDate: Date = Date(), note: String) {
         self.id = id
         self.title = title
         self.isComplete = isComplete
         self.dueDate = dueDate
         self.note = note
     }
-    
-    // MARK: - Equatable
-    /// Функция для сравнения двух заметок на равенство
-    static func == (lhs: Note, rhs: Note) -> Bool {
-        return lhs.id == rhs.id
+    // Convert Note to NoteEntity
+    func toEntity(context: NSManagedObjectContext) -> NoteEntity {
+        let entity = NoteEntity(context: context)
+        updateEntity(entity)
+        return entity
     }
-}
-
-// MARK: - Note Extension
-/// Расширение Note для инициализации из сущности NoteEntity
-extension Note {
-    init(from entity: NoteEntity) {
-        /// Инициализирует заметку из сущности NoteEntity
-        self.id = entity.id ?? UUID()
-        self.title = entity.title ?? ""
-        self.isComplete = entity.isComplete
-        self.dueDate = entity.dueDate ?? Date()
-        self.note = entity.note ?? ""
+    func updateEntity(_ entity: NoteEntity) {
+        entity.id = id
+        entity.title = title
+        entity.isComplete = isComplete
+        entity.dueDate = dueDate
+        entity.note = note
+    }
+    
+    static func newInstance(id: UUID = UUID(), title: String, isComplete: Bool = false, dueDate: Date = Date(), note: String) -> Note {
+        return Note(id: id, title: title, isComplete: isComplete, dueDate: dueDate, note: note)
     }
 }

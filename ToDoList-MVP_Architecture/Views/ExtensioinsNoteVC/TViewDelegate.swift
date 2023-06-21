@@ -77,9 +77,10 @@ extension NoteViewController: UITableViewDelegate {
             guard let self = self else { return }
             let newTitle = alertController.textFields?[0].text ?? ""
             let newNotes = alertController.textFields?[1].text ?? ""
-            let newNote = Note(id: note.id, title: newTitle, isComplete: note.isComplete, dueDate: note.dueDate, note: newNotes)
+
+            let newNote = Note.newInstance(title: newTitle, note: newNotes)
             
-            self.presenter.updateNote(withId: newNote.id, newNote: newNote)
+            self.presenter.updateNote(withId: note.id, newNote: newNote)
         }
         
         // Действие отмены редактирования

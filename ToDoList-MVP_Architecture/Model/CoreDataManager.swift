@@ -5,62 +5,67 @@
 //  Created by Shamil Aglarov on 16.06.2023.
 //
 
-import Foundation
 import CoreData
 
-// MARK: - CoreDataCacheProtocol
-/// Протокол, определяющий интерфейс операций кэширования CoreData
-protocol CoreDataCacheProtocol {
-    func fetchNotes(completion: @escaping (Result<[Note], Error>) -> Void)
-    func saveNote(note: Note, completion: @escaping (Error?) -> Void)
-    func deleteNote(by id: UUID, completion: @escaping (Error?) -> Void)
-    func updateNote(with id: UUID, newNote: Note, completion: @escaping (Result<NoteEntity, Error>) -> Void)
+// MARK: - CoreDataManagerProtocol
+/// Протокол для моделей, которые могут быть управляемы с помощью `CoreDataManager`.
+protocol CoreDataManagerProtocol {
+    
+    associatedtype Entity: NSManagedObject
+    var id: UUID { get }
+    
+    /// Конвертирует модель в `NSManagedObject`.
+    func toEntity(context: NSManagedObjectContext) -> Entity
+    
+    /// Обновляет `NSManagedObject` из модели.
+    func updateEntity(_ entity: Entity)
+    
+    /// Инициализирует модель из `NSManagedObject`.
+    init(from entity: Entity)
+    
+    /// Создает новый экземпляр модели.
+    static func newInstance(id: UUID,
+                            title: String,
+                            isComplete: Bool,
+                            dueDate: Date,
+                            note: String) -> Self
 }
 
 // MARK: - CoreDataManager
-/// Управление CoreData операциями, такими как сохранение, удаление, обновление и извлечение заметок.
-final class CoreDataManager: CoreDataCacheProtocol {
+/// Менеджер для управления моделями, которые совместимы с `CoreDataManagerProtocol`.
+final class CoreDataManager<Model: CoreDataManagerProtocol> where Model.Entity: NSManagedObject {
     
-    // MARK: - Properties
     private let persistentContainer: NSPersistentContainer
     
-    // MARK: - Initialization
+    /// Инициализирует менеджер с заданным `NSPersistentContainer`.
     init(_ persistentContainer: NSPersistentContainer) {
         self.persistentContainer = persistentContainer
     }
     
-    // MARK: - Fetch Notes
-    /// Выполняет запрос на выборку в базе данных и возвращает массив заметок.
-    func fetchNotes(completion: @escaping (Result<[Note], Error>) -> Void) {
-        let fetchRequest = NoteEntity.fetchRequest() as? NSFetchRequest<NoteEntity>
-        guard let unwrappedFetchRequest = fetchRequest else {
-            let error = NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Ошибка при приведении типов."])
-            completion(.failure(error))
-            return
-        }
+    /// Извлекает все экземпляры `Model` из базы данных.
+    func fetch(completion: @escaping (Result<[Model], Error>) -> Void) {
+        let fetchRequest = Model.Entity.fetchRequest() as! NSFetchRequest<Model.Entity>
+        
+        // Сортировка по убыванию даты
+        let sortDescriptor = NSSortDescriptor(key: "dueDate", ascending: false)
+        fetchRequest.sortDescriptors = [sortDescriptor]
         
         persistentContainer.viewContext.perform {
             do {
-                let noteEntities = try self.persistentContainer.viewContext.fetch(unwrappedFetchRequest)
-                let notes = noteEntities.map { Note(from: $0) }.sorted(by: { $0.dueDate > $1.dueDate })
-                completion(.success(notes))
+                let entities = try self.persistentContainer.viewContext.fetch(fetchRequest)
+                let models = entities.map(Model.init)
+                completion(.success(models))
             } catch {
                 completion(.failure(error))
             }
         }
     }
     
-    // MARK: - Save Note
-    /// Сохраняет заметку в базе данных.
-    func saveNote(note: Note, completion: @escaping (Error?) -> Void) {
+    /// Сохраняет экземпляр `Model` в базу данных.
+    func save(model: Model, completion: @escaping (Error?) -> Void) {
         let context = persistentContainer.viewContext
         context.perform {
-            let entity = NoteEntity(context: context)
-            entity.id = note.id
-            entity.title = note.title
-            entity.isComplete = note.isComplete
-            entity.dueDate = note.dueDate
-            entity.note = note.note
+            _ = model.toEntity(context: context)
             
             do {
                 try context.save()
@@ -71,51 +76,47 @@ final class CoreDataManager: CoreDataCacheProtocol {
         }
     }
     
-    // MARK: - Delete Note
-    /// Удаляет заметку из базы данных.
-    func deleteNote(by id: UUID, completion: @escaping (Error?) -> Void) {
+    /// Обновляет экземпляр `Model` в базе данных по заданному идентификатору.
+    func update(id: UUID, with newModel: Model, completion: @escaping (Error?) -> Void) {
         let context = persistentContainer.viewContext
-        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "NoteEntity")
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: Model.Entity.self))
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         
         context.perform {
             do {
-                if let results = try context.fetch(fetchRequest) as? [NSManagedObject], let noteToDelete = results.first {
-                    context.delete(noteToDelete)
-                    try context.save()
-                    completion(nil)
+                let entities = try context.fetch(fetchRequest) as! [Model.Entity]
+                guard let entity = entities.first else {
+                    // Ошибка обработки: объект с заданным идентификатором не найден
+                    return
                 }
+                
+                // Обновляем сущность
+                newModel.updateEntity(entity)
+                
+                try context.save()
+                completion(nil)
             } catch {
                 completion(error)
             }
         }
     }
     
-    // MARK: - Update Note
-    /// Обновляет заметку в базе данных.
-    func updateNote(with id: UUID, newNote: Note, completion: @escaping (Result<NoteEntity, Error>) -> Void) {
+    /// Удаляет экземпляр `Model` из базы данных по заданному идентификатору.
+    func delete(by id: UUID, completion: @escaping (Error?) -> Void) {
         let context = persistentContainer.viewContext
-        let fetchRequest = NoteEntity.fetchRequest() as NSFetchRequest<NSFetchRequestResult>
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: Model.Entity.self))
         fetchRequest.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         
         context.perform {
             do {
-                let noteEntities = try context.fetch(fetchRequest) as! [NoteEntity]
-                guard let entity = noteEntities.first else {
-                    let error = NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Не удалось найти заметку с указанным ID."])
-                    completion(.failure(error))
-                    return
-                }
+                let entities = try context.fetch(fetchRequest) as! [NSManagedObject]
+                guard let entity = entities.first else { return }
                 
-                entity.title = newNote.title
-                entity.isComplete = newNote.isComplete
-                entity.dueDate = newNote.dueDate
-                entity.note = newNote.note
-                
+                context.delete(entity)
                 try context.save()
-                completion(.success(entity))
-            } catch let error {
-                completion(.failure(error))
+                completion(nil)
+            } catch {
+                completion(error)
             }
         }
     }
